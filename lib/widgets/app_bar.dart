@@ -11,7 +11,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text("Extra Classes"),
+      title: Text("Extra Classes Tutor"),
       actions: [
         IconButton(
             onPressed: () {

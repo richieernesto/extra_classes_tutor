@@ -15,8 +15,8 @@ class BottomNavBarState extends State<BottomNavBar> {
   final List<Widget> pages =[
     HomeSceen(),
     MyCoursesScreen(),
+    SettingsScreen(),
     AccountScreen(),
-    SettingsScreen()
   ];
 
     List<IconData> listOfIcons = [

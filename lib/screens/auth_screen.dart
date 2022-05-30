@@ -1,9 +1,12 @@
+
 import 'dart:ui';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-//import 'package:fluttertoast/fluttertoast.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class AuthScreen extends StatefulWidget {
   //const AuthScreen({Key? key}) : super(key: key);
@@ -14,11 +17,58 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey();
+  final _passwordController = TextEditingController();
    bool _isLoading = false;
    bool _isLogin = true;
-  final _passwordController = TextEditingController();
-  final _emailController = TextEditingController();
+  String _username = "";
+  String _password = "";
+  String _fullName = "";
+  final _auth = FirebaseAuth.instance;
+  
 
+  void _trySubmit()async{
+    UserCredential authResult;
+    try{
+      setState(() {
+        _isLoading = true;
+      });
+    final isValid = _formKey.currentState!.validate();
+    FocusScope.of(context).unfocus();
+    
+    if(isValid){
+      _formKey.currentState!.save();
+      if(_isLogin){
+        authResult = await _auth.signInWithEmailAndPassword(email: _username, password: _password);
+      }
+      else{
+        authResult = await _auth.createUserWithEmailAndPassword(email: _username, password: _password);
+        await FirebaseFirestore.instance.collection('users').doc(authResult.user!.uid).set({
+          'username': _username, 'fullname': _fullName
+        });
+      }
+
+    }
+    
+    } on PlatformException catch(err){
+      var message = "An Error Occured";
+
+      if (err.message != null){
+        message = err.message!;
+      }
+      Fluttertoast.showToast(msg: message);
+      setState(() {
+        _isLoading = false;
+      });
+    }
+    catch(err){
+      print(err){
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -80,6 +130,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: TextFormField(
+                                        onSaved: (value){
+                                          _fullName = value!;
+                                        },
                                         style: TextStyle(
                                           color: Colors.white.withOpacity(.9),
                                         ),
@@ -117,6 +170,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: TextFormField(
+                                        onSaved: (value){
+                                          _username = value!;
+                                        },
                                         validator: (value){
                                           if (value != null && !value.contains("@") && value.length < 7){
                                             return "Invalid email";
@@ -157,6 +213,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: TextFormField(
+                                        controller: _passwordController,
+                                        onSaved: (value){
+                                          _password = value!;
+                                        },
                                         validator: (value){
                                           if(value==null){
                                             return "No password entered";
@@ -196,7 +256,14 @@ class _AuthScreenState extends State<AuthScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: TextFormField(
+
                                         validator: (value){
+                                          if (value == null){
+                                            return "Enter Password again!";
+                                          }
+                                          if (value != _passwordController.text){
+                                            return "Paswords dont Match";
+                                          }
                                           
                                         },
                                         style: TextStyle(
@@ -251,12 +318,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     InkWell(
                                       splashColor: Colors.transparent,
                                       highlightColor: Colors.transparent,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        //Fluttertoast.showToast(
-                                        //msg: 'Sign-In button pressed',
-                                        //);
-                                      },
+                                      onTap: _trySubmit,
                                       child: Container(
                                         margin: EdgeInsets.only(
                                           bottom: size.width * .05,
