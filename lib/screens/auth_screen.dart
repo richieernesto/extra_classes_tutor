@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../helpers/authErrors.dart';
 class AuthScreen extends StatefulWidget {
   //const AuthScreen({Key? key}) : super(key: key);
 
@@ -24,7 +25,14 @@ class _AuthScreenState extends State<AuthScreen> {
   String _password = "";
   String _fullName = "";
   final _auth = FirebaseAuth.instance;
+  var errorMessage;
+  final errMsg = new AuthErrors();
   
+  
+  void _showErrorDialog(String message) {
+    Fluttertoast.showToast(msg: message);
+    HapticFeedback.lightImpact();
+  }
 
   void _trySubmit()async{
     UserCredential authResult;
@@ -49,24 +57,21 @@ class _AuthScreenState extends State<AuthScreen> {
 
     }
     
-    } on PlatformException catch(err){
-      var message = "An Error Occured";
-
-      if (err.message != null){
-        message = err.message!;
-      }
-      Fluttertoast.showToast(msg: message);
-      setState(() {
-        _isLoading = false;
-      });
+    } on FirebaseAuthException catch(error){
+      
+       errorMessage = errMsg.detectedErrors[error.message];
+      
+      print(errorMessage);
+      _showErrorDialog(errorMessage);
     }
-    catch(err){
-      print(err){
-        setState(() {
-          _isLoading = false;
-        });
-      }
+   catch (error) {
+      const errorMessage =
+          'Could not authenticate you. Please try again later.';
+      _showErrorDialog(errorMessage);
     }
+    setState(() {
+      _isLoading = false;
+    });
   }
   
   @override
@@ -119,55 +124,64 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ),
                                     ),
 
-                                    if (!_isLogin) Container(
-                                      height: size.width / 8,
-                                      width: size.width / 1.25,
-                                      alignment: Alignment.center,
-                                      padding: EdgeInsets.only(
-                                          right: size.width / 30),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(.1),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: TextFormField(
-                                        onSaved: (value){
-                                          _fullName = value!;
-                                        },
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(.9),
+                                    if (!_isLogin) SizedBox(
+                                      height: size.height / 13,
+                                      child: Container(
+                                        height: double.infinity,
+                                        width: size.width / 1.25,
+                                        alignment: Alignment.center,
+                                        padding: EdgeInsets.only(
+                                            right: size.width / 30),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(.1),
+                                          borderRadius: BorderRadius.circular(20),
                                         ),
-                                        decoration: InputDecoration(
-                                          prefixIcon: Icon(
-                                            (Icons.person),
-                                            color: Colors.white.withOpacity(.8),
+                                        child: TextFormField(
+                                          onSaved: (value){
+                                            _fullName = value!;
+                                          },
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(.9),
                                           ),
-                                          border: InputBorder.none,
-                                          hintMaxLines: 1,
-                                          hintText: "Full Name",
-                                          hintStyle: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.white.withOpacity(.5),
+                                          decoration: InputDecoration(
+                                            contentPadding: EdgeInsets.only(top:5),
+                                            prefixIcon: Icon(
+                                              (Icons.person),
+                                              color: Colors.white.withOpacity(.8),
+                                            ),
+                                            border: InputBorder.none,
+                                            hintMaxLines: 1,
+                                            hintText: "Full Name",
+                                            hintStyle: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.white.withOpacity(.5),
+                                            ),
                                           ),
+                                          validator: (value){
+                                            if (value == null){
+                                              Fluttertoast.showToast(msg: "Name not entered");
+                                              //return "Name Not entered";
+                                            }
+                                            if(value != null && value.length <8 ){
+                                              Fluttertoast.showToast(msg: "Name not entered");
+                                              //return "Invalid Name";
+                                            }
+                                          },
+                                          
                                         ),
-                                        validator: (value){
-                                          if (value == null){
-                                            return "Name Not entered";
-                                          }
-                                          if(value != null && value.length <8 ){
-                                            return "Invalid Name";
-                                          }
-                                        },
                                       ),
                                     ),
                                     Container(
-                                      height: size.width / 8,
+                                      height: size.height / 13,
                                       width: size.width / 1.25,
                                       alignment: Alignment.center,
                                       padding: EdgeInsets.only(
-                                          right: size.width / 30),
+                                          right: size.width / 30
+                                          
+                                          ),
                                       decoration: BoxDecoration(
                                         color: Colors.black.withOpacity(.1),
-                                        borderRadius: BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: TextFormField(
                                         onSaved: (value){
@@ -175,10 +189,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                         },
                                         validator: (value){
                                           if (value != null && !value.contains("@") && value.length < 7){
-                                            return "Invalid email";
+                                            Fluttertoast.showToast(msg: "Invalid Email");
+                                            //return "Invalid email";
                                           }
                                           if (value == null){
-                                            return "No Email Entered";
+                                            Fluttertoast.showToast(msg: "Enter Email");
+                                            //return "No Email Entered";
                                           }
                                         },
                                         style: TextStyle(
@@ -189,7 +205,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                             TextInputType.emailAddress,
                                         decoration: InputDecoration(
                                           prefixIcon: Icon(
-                                            (Icons.account_circle_rounded),
+                                            (Icons.email),
                                             color: Colors.white.withOpacity(.8),
                                           ),
                                           border: InputBorder.none,
@@ -219,10 +235,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                         },
                                         validator: (value){
                                           if(value==null){
-                                            return "No password entered";
+                                            Fluttertoast.showToast(msg: "No Password entered");
+                                            //return "No password entered";
                                           }
-                                          if (value.length > 7){
-                                            return "Password must be at least 7 characters";
+                                          if (value!.length < 7){
+                                            Fluttertoast.showToast(msg: "Password must be atleast 7 characters");
+                                            //return "Password must be at least 7 characters";
                                           }
                                         },
                                         style: TextStyle(
@@ -259,10 +277,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
                                         validator: (value){
                                           if (value == null){
-                                            return "Enter Password again!";
+                                            Fluttertoast.showToast(msg: "Passwords dont Match");
+                                            //return "Enter Password again!";
                                           }
                                           if (value != _passwordController.text){
-                                            return "Paswords dont Match";
+                                            Fluttertoast.showToast(msg: "Passwords dont Match");
+                                            //return "Paswords dont Match";
                                           }
                                           
                                         },
@@ -299,8 +319,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                           ),
                                           onTap: (){},
                                         ),
-                                        GestureDetector(
-                                          child: Text(
+                                           
+                                            GestureDetector(
+                                          child: 
+                                            Text(
                                             _isLogin? "Sign Up Instead" : "Sign In",
                                             style: TextStyle(
                                               color: Colors.white
@@ -315,6 +337,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ],
                                     ),
                                     SizedBox(),
+                                    if (_isLoading)
+                                       CircularProgressIndicator()
+                                   else
                                     InkWell(
                                       splashColor: Colors.transparent,
                                       highlightColor: Colors.transparent,
